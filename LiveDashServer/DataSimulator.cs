@@ -9,13 +9,17 @@ namespace LiveDashServer
     {
         public async Task GenerateAndSendData()
         {
-            int counter = 0;
+            Random random = new Random();
+            int counter = 60;
+            int counter2 = 60;
             string messageFormat = "{{ \"canId\": {0}, \"data\": {1} }}";
             byte[] messageBytes = new byte[4];
             try
             {
                 while (true)
                 {
+                    counter = GenerateNewNumber(counter, random);
+                    counter2 = GenerateNewNumber(counter2, random);
                     //BitConverter.GetBytes((short)1).CopyTo(messageBytes, 0);
                     //BitConverter.GetBytes((short)counter).CopyTo(messageBytes, 2);
                     //await Program.Server.WriteToAllClients(messageBytes);
@@ -24,17 +28,29 @@ namespace LiveDashServer
                     //await Program.Server.WriteToAllClients(messageBytes);
                     string message = string.Format(messageFormat, 1, counter);
                     string message2 = string.Format(messageFormat, 50, 120 - counter);
+                    string message3 = string.Format(messageFormat, 2, counter2);
                     await Program.Server.WriteToAllClients(message);
                     await Program.Server.WriteToAllClients(message2);
-                    counter++;
-                    counter = counter % 120;
-                    await Task.Delay(10);
+                    await Program.Server.WriteToAllClients(message3);
+                    //counter++;
+                    counter = counter % 120 + 1;
+                    counter2 = counter2 % 120 + 1;
+                    //if (counter == 0) counter = 1;
+                    //if (counter2 == 0) counter2 = 1;
+                    await Task.Delay(100);
                 }
             }
             catch (Exception e)
             {
 
             }
+        }
+
+        private static int GenerateNewNumber(int counter, Random random)
+        {
+            double delta = counter * 0.3d;
+            counter += (int) ((random.NextDouble() * delta * 2) - delta);
+            return counter;
         }
     }
 }
