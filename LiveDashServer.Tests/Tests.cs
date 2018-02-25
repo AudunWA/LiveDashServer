@@ -14,5 +14,11 @@ namespace LiveDashServer.Tests
         {
             Assert.Pass();
         }
+
+        [Test]
+        public void Test2()
+        {
+            Assert.Fail();
+        }
     }
 }
