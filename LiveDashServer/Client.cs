@@ -32,7 +32,7 @@ namespace LiveDashServer
                         using (var sr = new StreamReader(messageReadStream, Encoding.UTF8))
                             msgContent = await sr.ReadToEndAsync();
 
-                        await Program.Server.WriteToAllClients(msgContent);
+                        Program.Server.WriteToAllClients(msgContent);
                     }
                 }
             }

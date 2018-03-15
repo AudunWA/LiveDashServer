@@ -29,9 +29,9 @@ namespace LiveDashServer
                     string message = string.Format(messageFormat, 1, counter);
                     string message2 = string.Format(messageFormat, 50, 120 - counter);
                     string message3 = string.Format(messageFormat, 2, counter2);
-                    await Program.Server.WriteToAllClients(message);
-                    await Program.Server.WriteToAllClients(message2);
-                    await Program.Server.WriteToAllClients(message3);
+                    Program.Server.WriteToAllClients(message);
+                    Program.Server.WriteToAllClients(message2);
+                    Program.Server.WriteToAllClients(message3);
                     //counter++;
                     counter = counter % 120 + 1;
                     counter2 = counter2 % 120 + 1;

@@ -1,4 +1,5 @@
-﻿using System.Collections.Concurrent;
+﻿using System;
+using System.Collections.Concurrent;
 using System.IO;
 using System.Net;
 using System.Text;
@@ -10,26 +11,32 @@ namespace LiveDashServer
 {
     class Server
     {
+        private const int WS_PORT = 8080;
+
         public bool IsRunning { get; private set; } = true;
         private readonly ConcurrentBag<Client> _clients = new ConcurrentBag<Client>();
 
         public async Task Run()
         {
-            var listener = new WebSocketListener(new IPEndPoint(IPAddress.Any, 8080));
+            var listener = new WebSocketListener(new IPEndPoint(IPAddress.Any, WS_PORT));
             listener.Standards.RegisterStandard(new WebSocketFactoryRfc6455());
-            listener.StartAsync();
+            _ = listener.StartAsync().ConfigureAwait(false);
+            Console.WriteLine($"Listening on port {WS_PORT}");
 
             DataSimulator simulator = new DataSimulator();
-            Task.Factory.StartNew(() => simulator.GenerateAndSendData().ConfigureAwait(false));
+            _ = simulator.GenerateAndSendData().ConfigureAwait(false);
+
             while (IsRunning)
             {
-                var client = await listener.AcceptWebSocketAsync(CancellationToken.None);
-                _clients.Add(new Client(client));
+                var clientSocket = await listener.AcceptWebSocketAsync(CancellationToken.None);
+                Console.WriteLine("Accepted a new client!");
+                Client client = new Client(clientSocket);
+                _clients.Add(client);
 
             }
         }
 
-        public async Task WriteToAllClients(string message)
+        public void WriteToAllClients(string message)
         {
             foreach (var client in _clients)
             {
@@ -39,12 +46,13 @@ namespace LiveDashServer
                 {
                     using (var sw = new StreamWriter(writer, Encoding.UTF8))
                     {
-                        await sw.WriteAsync(message);
+                        // Fire and forget, we don't need to wait until each client has received the request
+                        _ = sw.WriteAsync(message);
                     }
                 }
             }
         }
-        public async Task WriteToAllClients(byte[] message)
+        public void WriteToAllClients(byte[] message)
         {
             foreach (var client in _clients)
             {
@@ -52,7 +60,10 @@ namespace LiveDashServer
                     continue;
 
                 using (var messageWriter = client.Socket.CreateMessageWriter(WebSocketMessageType.Binary))
-                    await messageWriter.WriteAsync(message, 0, message.Length);
+                {
+                    // Fire and forget, we don't need to wait until each client has received the request
+                    _ = messageWriter.WriteAsync(message, 0, message.Length);
+                }
             }
         }
     }
