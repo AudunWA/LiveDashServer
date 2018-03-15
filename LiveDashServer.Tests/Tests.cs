@@ -1,4 +1,12 @@
+using System;
+using System.Diagnostics;
+using System.IO;
+using System.Text;
+using System.Threading;
+using System.Threading.Tasks;
+using FakeItEasy;
 using NUnit.Framework;
+using vtortola.WebSockets;
 
 namespace LiveDashServer.Tests
 {
@@ -10,15 +18,86 @@ namespace LiveDashServer.Tests
         }
 
         [Test]
-        public void Test1()
+        public async Task CloseClientConnection()
         {
-            Assert.Pass();
+            WebSocket socket = A.Fake<WebSocket>();
+            A.CallTo(() => socket.IsConnected).Returns(true);
+            Assert.IsTrue(socket.IsConnected);
+            Client client = new Client(socket);
+
+            await client.Close();
+            // Try to close after it has been closed
+            await client.Close();
+            A.CallTo(() => socket.Dispose()).MustHaveHappenedOnceExactly();
         }
 
         [Test]
-        public void Test2()
+        public async Task TestAsync()
         {
-            Assert.Fail();
+            Console.WriteLine("Hello!");
+            _ = DoWork().ConfigureAwait(false);
+            Debug.WriteLine("TestAsync continues!");
+            await Task.Delay(5000);
+            Debug.WriteLine("Waited 5000 ms");
+        }
+
+        private async Task DoWork()
+        {
+            string s = await DoWorkString();
+        }
+
+        private async Task<string> DoWorkString()
+        {
+            await Task.Delay(1000);
+            Debug.WriteLine("Waited 1000 ms");
+            return "heyyy";
+        }
+
+        [Test]
+        [TestCase("someData")]
+        public async Task ReceiveData(string testData)
+        {
+            WebSocket socket = A.Fake<WebSocket>();
+            var readStream = new WebSocketMessageReadStreamStub(new MemoryStream(Encoding.UTF8.GetBytes(testData)), WebSocketMessageType.Text, WebSocketExtensionFlags.None);
+            A.CallTo(() => socket.IsConnected).Returns(true);
+            A.CallTo(socket).WithReturnType<Task<WebSocketMessageReadStream>>().Returns(Task.FromResult((WebSocketMessageReadStream)readStream));
+            Client client = new Client(socket);
+            object delegateSender = null;
+            string delegateData = null;
+            client.MessageReceived += (sender, data) =>
+            {
+                delegateSender = sender;
+                delegateData = data;
+            };
+            await client.Close();
+            Assert.AreSame(client, delegateSender);
+            Assert.AreEqual(testData, delegateData);
+        }
+
+        public class WebSocketMessageReadStreamStub : WebSocketMessageReadStream
+        {
+            private readonly MemoryStream _stream;
+
+            public WebSocketMessageReadStreamStub(MemoryStream stream, WebSocketMessageType messageType, WebSocketExtensionFlags flags)
+            {
+                _stream = stream;
+                MessageType = messageType;
+                Flags = flags;
+            }
+
+            public override int Read(byte[] buffer, int offset, int count)
+            {
+                return _stream.Read(buffer, offset, count);
+            }
+
+            public override Task<int> ReadAsync(byte[] buffer, int offset, int count, CancellationToken cancel)
+            {
+                return _stream.ReadAsync(buffer, offset, count, cancel);
+            }
+
+            public override WebSocketMessageType MessageType { get; }
+
+            public override WebSocketExtensionFlags Flags { get; }
         }
     }
 }

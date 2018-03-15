@@ -33,26 +33,14 @@ namespace LiveDashServer
         {
             foreach (var client in _clients)
             {
-                if (!client.Socket.IsConnected)
-                    continue;
-                using (var writer = client.Socket.CreateMessageWriter(WebSocketMessageType.Text))
-                {
-                    using (var sw = new StreamWriter(writer, Encoding.UTF8))
-                    {
-                        await sw.WriteAsync(message);
-                    }
-                }
+                client.SendMessage(message);
             }
         }
         public async Task WriteToAllClients(byte[] message)
         {
             foreach (var client in _clients)
             {
-                if (!client.Socket.IsConnected)
-                    continue;
-
-                using (var messageWriter = client.Socket.CreateMessageWriter(WebSocketMessageType.Binary))
-                    await messageWriter.WriteAsync(message, 0, message.Length);
+                client.SendMessage(message);
             }
         }
     }
