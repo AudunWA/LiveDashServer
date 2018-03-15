@@ -32,28 +32,6 @@ namespace LiveDashServer.Tests
         }
 
         [Test]
-        public async Task TestAsync()
-        {
-            Console.WriteLine("Hello!");
-            _ = DoWork().ConfigureAwait(false);
-            Debug.WriteLine("TestAsync continues!");
-            await Task.Delay(5000);
-            Debug.WriteLine("Waited 5000 ms");
-        }
-
-        private async Task DoWork()
-        {
-            string s = await DoWorkString();
-        }
-
-        private async Task<string> DoWorkString()
-        {
-            await Task.Delay(1000);
-            Debug.WriteLine("Waited 1000 ms");
-            return "heyyy";
-        }
-
-        [Test]
         [TestCase("someData")]
         public async Task ReceiveData(string testData)
         {
