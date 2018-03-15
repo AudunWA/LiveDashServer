@@ -59,7 +59,7 @@ namespace LiveDashServer
             await _isClosed.Task;
         }
 
-        public async void SendMessage(string message)
+        public async Task SendMessage(string message)
         {
             if (!Socket.IsConnected)
                 return;
@@ -72,7 +72,7 @@ namespace LiveDashServer
                 }
             }
         }
-        public async void SendMessage(byte[] message)
+        public async Task SendMessage(byte[] message)
         {
             if (!Socket.IsConnected)
                 return;

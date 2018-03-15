@@ -10,4 +10,8 @@
     <LangVersion>latest</LangVersion>
   </PropertyGroup>
 
+  <ItemGroup>
+    <ProjectReference Include="..\WebSocketListener\vtortola.WebSockets\vtortola.WebSockets.csproj" />
+  </ItemGroup>
+
 </Project>

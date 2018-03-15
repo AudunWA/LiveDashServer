@@ -40,14 +40,14 @@ namespace LiveDashServer
         {
             foreach (var client in _clients)
             {
-                client.SendMessage(message);
+                _ = client.SendMessage(message);
             }
         }
         public void WriteToAllClients(byte[] message)
         {
             foreach (var client in _clients)
             {
-                client.SendMessage(message);
+                _ = client.SendMessage(message);
             }
         }
     }
