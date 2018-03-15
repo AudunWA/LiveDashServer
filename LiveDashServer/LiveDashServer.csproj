@@ -3,6 +3,7 @@
   <PropertyGroup>
     <OutputType>Exe</OutputType>
     <TargetFramework>netcoreapp2.0</TargetFramework>
+    <AssemblyVersion>0.1.0</AssemblyVersion>
   </PropertyGroup>
 
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|AnyCPU'">
@@ -10,7 +11,7 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="vtortola.WebSocketListener" Version="3.0.0" />
+    <ProjectReference Include="..\WebSocketListener\vtortola.WebSockets\vtortola.WebSockets.csproj" />
   </ItemGroup>
 
 </Project>
