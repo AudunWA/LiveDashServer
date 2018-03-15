@@ -5,8 +5,10 @@ using System.Threading.Tasks;
 
 namespace LiveDashServer
 {
-    class DataSimulator
+    public class DataSimulator
     {
+        private const int TIMESTAMP_ID = 32;
+        private const int VIDEO_DELAY_ID = 31;
         public async Task GenerateAndSendData()
         {
             Random random = new Random();
@@ -32,6 +34,8 @@ namespace LiveDashServer
                     await Program.Server.WriteToAllClients(message);
                     await Program.Server.WriteToAllClients(message2);
                     await Program.Server.WriteToAllClients(message3);
+                    await Program.Server.WriteToAllClients(string.Format(messageFormat, TIMESTAMP_ID, DateTimeOffset.Now.ToUnixTimeSeconds()));
+                    await Program.Server.WriteToAllClients(string.Format(messageFormat, VIDEO_DELAY_ID, 3000));
                     //counter++;
                     counter = counter % 120 + 1;
                     counter2 = counter2 % 120 + 1;
