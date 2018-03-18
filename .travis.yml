@@ -8,3 +8,6 @@ install:
 script:
  - dotnet build
  - dotnet test LiveDashServer.Tests/LiveDashServer.Tests.csproj
+
+notifications:
+  email: false
