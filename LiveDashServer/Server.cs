@@ -23,8 +23,11 @@ namespace LiveDashServer
             _ = listener.StartAsync().ConfigureAwait(false);
             Console.WriteLine($"Listening on port {WS_PORT}");
 
-            DataSimulator simulator = new DataSimulator();
-            _ = simulator.GenerateAndSendData().ConfigureAwait(false);
+            ForwarderConnection connection = new ForwarderConnection();
+            _ = connection.ListenAsync().ConfigureAwait(false);
+
+            //DataSimulator simulator = new DataSimulator();
+            //_ = simulator.GenerateAndSendData().ConfigureAwait(false);
 
             while (IsRunning)
             {
