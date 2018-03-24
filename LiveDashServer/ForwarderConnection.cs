@@ -5,11 +5,14 @@ using System.Net;
 using System.Net.Sockets;
 using System.Text;
 using System.Threading.Tasks;
+using NLog;
 
 namespace LiveDashServer
 {
     class ForwarderConnection
     {
+        private static readonly Logger _logger = LogManager.GetCurrentClassLogger();
+
         public async Task ListenAsync()
         {
             try
@@ -20,7 +23,7 @@ namespace LiveDashServer
                 while (true)
                 {
                     TcpClient client = await listener.AcceptTcpClientAsync();
-                    Console.WriteLine("Got connection from pit!");
+                    _logger.Info("Got connection from pit!");
                     using (NetworkStream stream = client.GetStream())
                     {
                         while (client.Connected)
@@ -32,7 +35,7 @@ namespace LiveDashServer
             }
             catch (Exception e)
             {
-
+                _logger.Error(e);
             }
         }
 
@@ -88,7 +91,7 @@ namespace LiveDashServer
             }
             catch (Exception e)
             {
-
+                _logger.Error(e);
             }
         }
 
@@ -102,6 +105,7 @@ namespace LiveDashServer
                 if (bytesReceived == 0)
                 {
                     // End of stream or something
+                    _logger.Warn("No more bytes to read from forwarder.");
                     return null;
                 }
 

@@ -11,6 +11,20 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <None Remove="nlog.config" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Content Include="nlog.config">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="NLog" Version="4.5.0-rc07" />
+  </ItemGroup>
+
+  <ItemGroup>
     <ProjectReference Include="..\WebSocketListener\vtortola.WebSockets\vtortola.WebSockets.csproj" />
   </ItemGroup>
 

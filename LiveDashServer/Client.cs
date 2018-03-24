@@ -3,39 +3,53 @@ using System.IO;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
+using NLog;
 using vtortola.WebSockets;
 
 namespace LiveDashServer
 {
     public class Client
     {
-        private readonly CancellationTokenSource _cancellationTokenSource;
+        private static readonly Logger _logger = LogManager.GetCurrentClassLogger();
+
+        private readonly CancellationTokenSource _cancellationTokenSource = new CancellationTokenSource();
         private readonly TaskCompletionSource<bool> _isClosed = new TaskCompletionSource<bool>();
         private WebSocket Socket { get; }
+
+        public int ID { get; }
 
         public bool IsConnected => Socket.IsConnected;
 
         public EventHandler<string> MessageReceived;
 
-        public Client(WebSocket socket)
+
+        public Client(int id, WebSocket socket)
         {
+            ID = id;
             Socket = socket;
-            _cancellationTokenSource = new CancellationTokenSource();
-            ProcessConnection(_cancellationTokenSource.Token).ConfigureAwait(false);
         }
 
-        private async Task ProcessConnection(CancellationToken token)
+        public async Task ProcessConnection()
         {
+            CancellationToken token = _cancellationTokenSource.Token;
             // This fixes "deadlock"-ish issue with unit tests, I don't understand why yet
             // It might be because the loop always captures the context, thus not allowing the outer code to run
             // This is probably not a good solution, and should be replaced when I undertstand async better
-            await Task.Yield(); 
+            await Task.Yield();
             try
             {
                 do
                 {
                     WebSocketMessageReadStream messageReadStream =
                         await Socket.ReadMessageAsync(token);
+
+                    // Client disconnected
+                    if (messageReadStream == null)
+                    {
+                        _logger.Trace("Client {0}'s stream closed", ID);
+                        return;
+                    }
+
                     if (messageReadStream.MessageType == WebSocketMessageType.Text)
                     {
                         string msgContent;
@@ -45,6 +59,10 @@ namespace LiveDashServer
                         MessageReceived?.Invoke(this, msgContent);
                     }
                 } while (Socket.IsConnected && !token.IsCancellationRequested);
+            }
+            catch (Exception e)
+            {
+                _logger.Error(e);
             }
             finally
             {
