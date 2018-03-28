@@ -2,11 +2,14 @@
 using System.Collections.Generic;
 using System.Text;
 using System.Threading.Tasks;
+using NLog;
 
 namespace LiveDashServer
 {
     public class DataSimulator
     {
+        private static readonly Logger _logger = LogManager.GetCurrentClassLogger();
+
         private const int TIMESTAMP_ID = 32;
         private const int VIDEO_DELAY_ID = 31;
         public async Task GenerateAndSendData()
@@ -46,7 +49,7 @@ namespace LiveDashServer
             }
             catch (Exception e)
             {
-
+                _logger.Error(e);
             }
         }
 
