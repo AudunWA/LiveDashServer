@@ -53,8 +53,17 @@ namespace LiveDashServer
                 try
                 {
                     var clientSocket = await listener.AcceptWebSocketAsync(CancellationToken.None);
-                    Client client = new Client(_nextClientID++, clientSocket);
-                    _ = HandleClient(client);
+
+                    if (clientSocket != null)
+                    {
+                        // TODO: Log the exception which caused the socket to become null
+                        Client client = new Client(_nextClientID++, clientSocket);
+                        _ = HandleClient(client);
+                    }
+                    else
+                    {
+                        _logger.Warn("A client socket was null");
+                    }
                 }
                 catch (Exception e)
                 {
