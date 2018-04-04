@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Text;
+using System.Threading;
 using System.Threading.Tasks;
 using NLog;
 
@@ -12,7 +13,7 @@ namespace LiveDashServer
 
         private const int TIMESTAMP_ID = 32;
         private const int VIDEO_DELAY_ID = 31;
-        public async Task GenerateAndSendData()
+        public async Task GenerateAndSendData(CancellationToken token = default)
         {
             Random random = new Random();
             int counter = 60;
@@ -21,7 +22,7 @@ namespace LiveDashServer
             byte[] messageBytes = new byte[4];
             try
             {
-                while (true)
+                while (!token.IsCancellationRequested)
                 {
                     counter = GenerateNewNumber(counter, random);
                     counter2 = GenerateNewNumber(counter2, random);

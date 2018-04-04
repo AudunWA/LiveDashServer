@@ -22,8 +22,10 @@ namespace LiveDashServer
 
                 while (true)
                 {
+                    Program.Server.StartSimulator();
                     TcpClient client = await listener.AcceptTcpClientAsync();
                     _logger.Info("Got connection from pit!");
+                    Program.Server.StopSimulator();
                     using (NetworkStream stream = client.GetStream())
                     {
                         while (client.Connected)

@@ -21,6 +21,23 @@ namespace LiveDashServer
         public bool IsRunning { get; private set; } = true;
         private readonly ConcurrentDictionary<int, Client> _clients = new ConcurrentDictionary<int, Client>();
 
+        private DataSimulator _simulator = new DataSimulator();
+        private CancellationTokenSource _simulatorTokenSource;
+
+        public void StartSimulator()
+        {
+            if (_simulatorTokenSource != null && !_simulatorTokenSource.IsCancellationRequested)
+                return;
+
+            _simulatorTokenSource = new CancellationTokenSource();
+            _ = _simulator.GenerateAndSendData(_simulatorTokenSource.Token).ConfigureAwait(false);
+
+        }
+        public void StopSimulator()
+        {
+            _simulatorTokenSource?.Cancel();
+        }
+
         public async Task Run()
         {
             var listener = new WebSocketListener(new IPEndPoint(IPAddress.Any, WS_PORT));
@@ -28,11 +45,8 @@ namespace LiveDashServer
             _ = listener.StartAsync().ConfigureAwait(false);
             _logger.Info("Listening on port {0}", WS_PORT);
 
-         /*   ForwarderConnection connection = new ForwarderConnection();
-            _ = connection.ListenAsync().ConfigureAwait(false);*/
-
-            DataSimulator simulator = new DataSimulator();
-            _ = simulator.GenerateAndSendData().ConfigureAwait(false);
+            ForwarderConnection connection = new ForwarderConnection();
+            _ = connection.ListenAsync().ConfigureAwait(false);
 
             while (IsRunning)
             {
