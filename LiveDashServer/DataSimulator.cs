@@ -48,8 +48,12 @@ namespace LiveDashServer
                     if (counter2 < 0) counter2 = 120;
                     //if (counter == 0) counter = 1;
                     //if (counter2 == 0) counter2 = 1;
-                    await Task.Delay(100);
+                    await Task.Delay(100, token);
                 }
+            }
+            catch (OperationCanceledException)
+            {
+                _logger.Trace("DataSimulator task canceled");
             }
             catch (Exception e)
             {
