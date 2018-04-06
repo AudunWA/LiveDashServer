@@ -48,7 +48,7 @@ namespace LiveDashServer
                     if (counter2 < 0) counter2 = 120;
                     //if (counter == 0) counter = 1;
                     //if (counter2 == 0) counter2 = 1;
-                    await Task.Delay(100, token);
+                    await Task.Delay(100, token).ConfigureAwait(false);
                 }
             }
             catch (OperationCanceledException)
@@ -63,9 +63,8 @@ namespace LiveDashServer
 
         private static int GenerateNewNumber(int counter, Random random)
         {
-            double delta = 120 * 0.1;
-            counter += (int) (random.NextDouble() * delta * 2 - delta);
-            return counter;
+            const double delta = 120 * 0.1;
+            return counter + (int)(random.NextDouble() * delta * 2 - delta);
         }
     }
 }

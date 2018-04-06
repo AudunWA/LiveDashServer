@@ -24,7 +24,7 @@ namespace LiveDashServer
             byte[] bytes = new byte[count];
             while (totalBytes < count)
             {
-                int bytesReceived = await stream.ReadAsync(bytes, 0, count - totalBytes);
+                int bytesReceived = await stream.ReadAsync(bytes, 0, count - totalBytes).ConfigureAwait(false);
                 if (bytesReceived == 0)
                 {
                     // End of stream or something

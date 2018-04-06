@@ -15,40 +15,17 @@ namespace LiveDashServer
     public class ForwarderConnection
     {
         private static readonly Logger _logger = LogManager.GetCurrentClassLogger();
-        private ConcurrentDictionary<string, int> _dataCount = new ConcurrentDictionary<string, int>();
-        private Dictionary<string, DateTime> _dataTimes = new Dictionary<string, DateTime>();
-        private ConcurrentDictionary<string, double> _frequencies = new ConcurrentDictionary<string, double>();
+        // private ConcurrentDictionary<string, int> _dataCount = new ConcurrentDictionary<string, int>();
+        private readonly Dictionary<string, DateTime> _dataTimes = new Dictionary<string, DateTime>();
 
         public bool IsConnected { get; private set; }
 
-        private async Task UpdateFrequenciesAsync(CancellationToken token = default)
-        {
-            try
-            {
-                while (!token.IsCancellationRequested)
-                {
-                    const int DELAY = 1000;
-                    foreach (var pair in _dataCount)
-                    {
-                        _frequencies[pair.Key] = Math.Max(1, pair.Value / (DELAY / 1000d));
-                        _dataCount[pair.Key] = 0;
-                    }
-
-                    await Task.Delay(DELAY, token);
-                }
-            }
-            catch (Exception e)
-            {
-                ;
-            }
-        }
         public async Task ListenAsync()
         {
             try
             {
                 TcpListener listener = new TcpListener(IPAddress.Any, 1221);
                 listener.Start();
-                _ = Task.Run(() => UpdateFrequenciesAsync());
 
                 while (true)
                 {
@@ -64,7 +41,7 @@ namespace LiveDashServer
                     {
                         while (client.Connected)
                         {
-                            ForwarderMessage message = await ReadMessageAsync(stream);
+                            ForwarderMessage message = await ReadMessageAsync(stream).ConfigureAwait(false);
                             if (message == null)
                             {
                                 client.Close();

@@ -21,8 +21,8 @@ namespace LiveDashServer
         public bool IsRunning { get; private set; } = true;
         private readonly ConcurrentDictionary<int, Client> _clients = new ConcurrentDictionary<int, Client>();
 
-        private ForwarderConnection _forwarderConnection = new ForwarderConnection();
-        private DataSimulator _simulator = new DataSimulator();
+        private readonly ForwarderConnection _forwarderConnection = new ForwarderConnection();
+        private readonly DataSimulator _simulator = new DataSimulator();
         private CancellationTokenSource _simulatorTokenSource;
 
         public void StartSimulator()

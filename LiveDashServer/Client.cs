@@ -20,7 +20,7 @@ namespace LiveDashServer
 
         public bool IsConnected => Socket.IsConnected;
 
-        public EventHandler<string> MessageReceived;
+        public EventHandler<string> MessageReceived { get; set; }
 
 
         public Client(int id, WebSocket socket)
