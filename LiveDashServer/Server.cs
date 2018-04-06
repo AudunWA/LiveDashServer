@@ -21,6 +21,7 @@ namespace LiveDashServer
         public bool IsRunning { get; private set; } = true;
         private readonly ConcurrentDictionary<int, Client> _clients = new ConcurrentDictionary<int, Client>();
 
+        private ForwarderConnection _forwarderConnection = new ForwarderConnection();
         private DataSimulator _simulator = new DataSimulator();
         private CancellationTokenSource _simulatorTokenSource;
 
@@ -40,13 +41,13 @@ namespace LiveDashServer
 
         public async Task Run()
         {
+            UpdateConsoleTitle();
             var listener = new WebSocketListener(new IPEndPoint(IPAddress.Any, WS_PORT));
             listener.Standards.RegisterStandard(new WebSocketFactoryRfc6455());
             _ = listener.StartAsync().ConfigureAwait(false);
             _logger.Info("Listening on port {0}", WS_PORT);
 
-            ForwarderConnection connection = new ForwarderConnection();
-            _ = connection.ListenAsync().ConfigureAwait(false);
+            _ = _forwarderConnection.ListenAsync().ConfigureAwait(false);
 
             while (IsRunning)
             {
@@ -85,9 +86,9 @@ namespace LiveDashServer
             UpdateConsoleTitle();
         }
 
-        private void UpdateConsoleTitle()
+        internal void UpdateConsoleTitle()
         {
-            Console.Title = $"LiveDashServer - {_clients.Count} client(s)";
+            Console.Title = $"LiveDashServer - {_clients.Count} client(s), forwarder {(_forwarderConnection.IsConnected ? "" : "NOT")} connected";
         }
 
         public void WriteToAllClients(string message)

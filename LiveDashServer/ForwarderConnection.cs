@@ -2,6 +2,7 @@
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Globalization;
+using System.IO;
 using System.Net;
 using System.Net.Sockets;
 using System.Text;
@@ -11,12 +12,14 @@ using NLog;
 
 namespace LiveDashServer
 {
-    class ForwarderConnection
+    public class ForwarderConnection
     {
         private static readonly Logger _logger = LogManager.GetCurrentClassLogger();
         private ConcurrentDictionary<string, int> _dataCount = new ConcurrentDictionary<string, int>();
         private Dictionary<string, DateTime> _dataTimes = new Dictionary<string, DateTime>();
         private ConcurrentDictionary<string, double> _frequencies = new ConcurrentDictionary<string, double>();
+
+        public bool IsConnected { get; private set; }
 
         private async Task UpdateFrequenciesAsync(CancellationToken token = default)
         {
@@ -49,17 +52,29 @@ namespace LiveDashServer
 
                 while (true)
                 {
+                    IsConnected = false;
+                    Program.Server.UpdateConsoleTitle();
                     Program.Server.StartSimulator();
                     TcpClient client = await listener.AcceptTcpClientAsync();
+                    IsConnected = true;
+                    Program.Server.UpdateConsoleTitle();
                     _logger.Info("Got connection from pit!");
                     Program.Server.StopSimulator();
                     using (NetworkStream stream = client.GetStream())
                     {
                         while (client.Connected)
                         {
-                            await ReadMessageAsync(stream, client);
+                            ForwarderMessage message = await ReadMessageAsync(stream);
+                            if (message == null)
+                            {
+                                client.Close();
+                                break;
+                            }
+
+                            HandleMessage(message);
                         }
                     }
+                    _logger.Info("Lost connection from pit");
                 }
             }
             catch (Exception e)
@@ -68,100 +83,105 @@ namespace LiveDashServer
             }
         }
 
-        private async Task ReadMessageAsync(NetworkStream stream, TcpClient client)
+        private void HandleMessage(ForwarderMessage message)
         {
+            foreach (var dataPair in message.DataValues)
+            {
+                if (!_dataTimes.TryGetValue(dataPair.Key, out DateTime lastMessageTime))
+                    lastMessageTime = DateTime.MinValue;
+
+                double period = (DateTime.Now - lastMessageTime).TotalSeconds;
+                double frequency = 1 / period;
+                //if (!_dataCount.TryAdd(channelName, 0))
+                //    _dataCount[channelName]++;
+
+                if (frequency > 500)
+                {
+                    _logger.Trace("{0}: {1} - {2} Hz", dataPair.Key, dataPair.Value, frequency);
+                }
+                else
+                {
+                    _dataTimes[dataPair.Key] = DateTime.Now;
+                    Program.Server.WriteToAllClients(
+                        $"{{ \"channel\": \"{dataPair.Key}\", \"data\": {dataPair.Value.ToString().Replace(',', '.')} }}");
+                }
+            }
+        }
+
+        private async Task<ForwarderMessage> ReadMessageAsync(NetworkStream stream)
+        {
+            ForwarderMessage message;
             try
             {
-                byte[] timestampBytes = await ReadFixedAmountAsync(stream, sizeof(long));
+                byte[] timestampBytes = await stream.ReadFixedAmountAsync(sizeof(long));
                 if (timestampBytes == null)
                 {
-                    client.Close();
-                    return;
+                    return null;
                 }
 
                 long timestamp = BitConverter.ToInt64(timestampBytes, 0);
+                message = new ForwarderMessage(timestamp);
 
-                byte[] valuesCountBytes = await ReadFixedAmountAsync(stream, 1);
+                byte[] valuesCountBytes = await stream.ReadFixedAmountAsync(1);
                 if (valuesCountBytes == null)
                 {
-                    client.Close();
-                    return;
+                    return null;
                 }
 
                 for (int i = 0; i < valuesCountBytes[0]; i++)
                 {
-                    byte[] channelNameLengthBytes = await ReadFixedAmountAsync(stream, 1);
+                    byte[] channelNameLengthBytes = await stream.ReadFixedAmountAsync(1);
                     if (channelNameLengthBytes == null)
                     {
-                        client.Close();
-                        return;
+                        return null;
                     }
 
-                    byte[] channelNameBytes = await ReadFixedAmountAsync(stream, channelNameLengthBytes[0]);
+                    byte[] channelNameBytes = await stream.ReadFixedAmountAsync(channelNameLengthBytes[0]);
                     if (channelNameBytes == null)
                     {
-                        client.Close();
-                        return;
+                        return null;
                     }
 
 
-                    byte[] dataBytes = await ReadFixedAmountAsync(stream, sizeof(double));
+                    byte[] dataBytes = await stream.ReadFixedAmountAsync(sizeof(double));
                     if (dataBytes == null)
                     {
-                        client.Close();
-                        return;
+                        return null;
                     }
 
                     string channelName = Encoding.UTF8.GetString(channelNameBytes);
                     double data = BitConverter.ToDouble(dataBytes, 0);
 
-                    if(!_dataTimes.TryGetValue(channelName, out DateTime lastMessageTime))
-                        lastMessageTime = DateTime.Now;
-
-                    double period = Math.Max(0.000001, (DateTime.Now - lastMessageTime).TotalSeconds);
-                    double frequency = 1 / period;
-                    _dataTimes[channelName] = DateTime.Now;
-                    if (!_dataCount.TryAdd(channelName, 0))
-                        _dataCount[channelName]++;
-
-                    //if (!_frequencies.TryGetValue(channelName, out double frequency))
-                    //    frequency = 1;
-                    if (true || _dataCount[channelName] % Math.Max(1, (int) (frequency / 10)) == 0)
+                    if (!message.DataValues.TryAdd(channelName, data))
                     {
-                        if (frequency > 10)
-                        {
-                            _logger.Trace("{0}: {1} - {2} Hz", channelName, data, frequency);
-                        }
-
-                        Program.Server.WriteToAllClients(
-                            $"{{ \"channel\": \"{channelName}\", \"data\": {data.ToString().Replace(',', '.')} }}");
+                        _logger.Warn("Received a message with 2 data points from the same channel");
                     }
                 }
+            }
+            catch (IOException e) when (e.InnerException is SocketException socketException)
+            {
+                // These exceptions usually gets called when the client disconnects
+                _logger.Trace("Lost connection: SocketError.{0}", socketException.SocketErrorCode);
+                return null;
             }
             catch (Exception e)
             {
                 _logger.Error(e);
+                return null;
             }
+
+            return message;
         }
 
-        private async Task<byte[]> ReadFixedAmountAsync(NetworkStream stream, int count)
+        class ForwarderMessage
         {
-            int totalBytes = 0;
-            byte[] bytes = new byte[count];
-            while (totalBytes < count)
+            public long Timestamp { get; }
+            public Dictionary<string, double> DataValues { get; } = new Dictionary<string, double>();
+
+            public ForwarderMessage(long timestamp)
             {
-                int bytesReceived = await stream.ReadAsync(bytes, 0, count - totalBytes);
-                if (bytesReceived == 0)
-                {
-                    // End of stream or something
-                    _logger.Warn("No more bytes to read from forwarder.");
-                    return null;
-                }
-
-                totalBytes += bytesReceived;
+                this.Timestamp = timestamp;
             }
-
-            return bytes;
         }
     }
 }
