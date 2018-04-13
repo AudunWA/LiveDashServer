@@ -89,7 +89,7 @@ namespace LiveDashServer
                     _dataTimes[dataPair.Key] = lastMessageStopwatch;
                     lastMessageStopwatch.Restart();
                     await Program.Server.WriteToAllClients(
-                        $"{{ \"channel\": \"{dataPair.Key}\", \"data\": {dataPair.Value.ToString().Replace(',', '.')} }}");
+                        $"{{ \"channel\": \"{dataPair.Key}\", \"data\": {dataPair.Value.ToString().Replace(',', '.')} }}", dataPair.Key);
                 }
             }
         }

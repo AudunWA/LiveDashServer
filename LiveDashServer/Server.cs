@@ -96,11 +96,11 @@ namespace LiveDashServer
             Console.Title = $"LiveDashServer - {_clients.Count} client(s), forwarder {(_forwarderConnection.IsConnected ? "" : "NOT")} connected";
         }
 
-        public async Task WriteToAllClients(string message)
+        public async Task WriteToAllClients(string message, string dataChannel)
         {
             foreach (var client in _clients.Values)
             {
-                await client.SendMessage(message);
+                await client.SendMessage(message, dataChannel);
             }
         }
         public async Task WriteToAllClients(byte[] message)
