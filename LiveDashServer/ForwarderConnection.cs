@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Globalization;
 using System.IO;
 using System.Net;
@@ -16,7 +17,7 @@ namespace LiveDashServer
     {
         private static readonly Logger _logger = LogManager.GetCurrentClassLogger();
         // private ConcurrentDictionary<string, int> _dataCount = new ConcurrentDictionary<string, int>();
-        private readonly Dictionary<string, DateTime> _dataTimes = new Dictionary<string, DateTime>();
+        private readonly Dictionary<string, Stopwatch> _dataTimes = new Dictionary<string, Stopwatch>();
 
         public bool IsConnected { get; private set; }
 
@@ -64,22 +65,29 @@ namespace LiveDashServer
         {
             foreach (var dataPair in message.DataValues)
             {
-                if (!_dataTimes.TryGetValue(dataPair.Key, out DateTime lastMessageTime))
-                    lastMessageTime = DateTime.MinValue;
+                long period;
+                if (!_dataTimes.TryGetValue(dataPair.Key, out Stopwatch lastMessageStopwatch))
+                {
+                    lastMessageStopwatch = new Stopwatch();
+                    period = int.MaxValue;
+                }
+                else
+                {
+                    period = Math.Max(1, lastMessageStopwatch.ElapsedMilliseconds);
+                }
 
-                double period = (DateTime.Now - lastMessageTime).TotalSeconds;
-                double frequency = 1 / period;
+                double frequency = 1000d / period;
                 //if (!_dataCount.TryAdd(channelName, 0))
                 //    _dataCount[channelName]++;
 
                 if (frequency > 500)
                 {
-                    _logger.Trace("{0}: {1} - {2} Hz", dataPair.Key, dataPair.Value, frequency);
+                    //_logger.Trace("{0}: {1} - {2} Hz", dataPair.Key, dataPair.Value, frequency);
                 }
-                else
+                else if(frequency <= 10)
                 {
-                    _dataTimes[dataPair.Key] = DateTime.Now;
-                    Program.Server.WriteToAllClients(
+                    _dataTimes[dataPair.Key] = lastMessageStopwatch;
+                    lastMessageStopwatch.Restart();
                         $"{{ \"channel\": \"{dataPair.Key}\", \"data\": {dataPair.Value.ToString().Replace(',', '.')} }}");
                 }
             }
