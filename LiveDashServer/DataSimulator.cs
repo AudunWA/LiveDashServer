@@ -35,12 +35,12 @@ namespace LiveDashServer
                     string message = string.Format(messageFormat, 1, counter);
                     string message2 = string.Format(messageFormat, 50, 120 - counter);
                     string message3 = string.Format(messageFormat, 2, counter2);
-                    Program.Server.WriteToAllClients(message);
-                    Program.Server.WriteToAllClients(message2);
-                    Program.Server.WriteToAllClients(message3);
-                    Program.Server.WriteToAllClients(string.Format(messageFormat, TIMESTAMP_ID,
-                        DateTimeOffset.Now.ToUnixTimeSeconds()));
-                    Program.Server.WriteToAllClients(string.Format(messageFormat, VIDEO_DELAY_ID, 3000));
+                    await Program.Server.WriteToAllClients(message);
+                    //await Program.Server.WriteToAllClients(message2);
+                    //await Program.Server.WriteToAllClients(message3);
+                    //await Program.Server.WriteToAllClients(string.Format(messageFormat, TIMESTAMP_ID,
+                    //    DateTimeOffset.Now.ToUnixTimeSeconds()));
+                    //await Program.Server.WriteToAllClients(string.Format(messageFormat, VIDEO_DELAY_ID, 3000));
                     //counter++;
                     counter = counter % 120;
                     counter2 = counter2 % 120;
@@ -48,7 +48,7 @@ namespace LiveDashServer
                     if (counter2 < 0) counter2 = 120;
                     //if (counter == 0) counter = 1;
                     //if (counter2 == 0) counter2 = 1;
-                    await Task.Delay(100, token).ConfigureAwait(false);
+                    await Task.Delay(100, token);
                 }
             }
             catch (OperationCanceledException)

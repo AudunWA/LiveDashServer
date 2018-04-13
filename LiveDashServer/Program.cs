@@ -18,7 +18,7 @@ namespace LiveDashServer
             //DelayTest().Forget();
             _logger.Info("Starting LiveDashServer {0}", Assembly.GetExecutingAssembly().GetName().Version);
             Server = new Server();
-            await Server.Run().ConfigureAwait(false);
+            await Server.Run();
 
             // Ensure to flush and stop internal timers/threads before application-exit (Avoid segmentation fault on Linux)
             LogManager.Shutdown();

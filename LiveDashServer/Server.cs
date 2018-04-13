@@ -31,7 +31,7 @@ namespace LiveDashServer
                 return;
 
             _simulatorTokenSource = new CancellationTokenSource();
-            _ = _simulator.GenerateAndSendData(_simulatorTokenSource.Token).ConfigureAwait(false);
+            _simulator.GenerateAndSendData(_simulatorTokenSource.Token).Forget();
 
         }
         public void StopSimulator()
@@ -42,12 +42,17 @@ namespace LiveDashServer
         public async Task Run()
         {
             UpdateConsoleTitle();
-            var listener = new WebSocketListener(new IPEndPoint(IPAddress.Any, WS_PORT));
+            WebSocketListenerOptions options = new WebSocketListenerOptions()
+            {
+                //PingMode = PingModes.LatencyControl,
+                //PingTimeout = TimeSpan.FromSeconds(1)
+            };
+            var listener = new WebSocketListener(new IPEndPoint(IPAddress.Any, WS_PORT), options);
             listener.Standards.RegisterStandard(new WebSocketFactoryRfc6455());
-            _ = listener.StartAsync().ConfigureAwait(false);
+            listener.StartAsync().Forget();
             _logger.Info("Listening on port {0}", WS_PORT);
 
-            _ = _forwarderConnection.ListenAsync().ConfigureAwait(false);
+           _forwarderConnection.ListenAsync().Forget();
 
             while (IsRunning)
             {
@@ -59,7 +64,7 @@ namespace LiveDashServer
                     {
                         // TODO: Log the exception which caused the socket to become null
                         Client client = new Client(_nextClientID++, clientSocket);
-                        _ = HandleClient(client);
+                        HandleClient(client).Forget();
                     }
                     else
                     {
@@ -80,7 +85,7 @@ namespace LiveDashServer
             _clients.TryAdd(client.ID, client);
             UpdateConsoleTitle();
 
-            await client.ProcessConnection().ConfigureAwait(false);
+            await client.ProcessConnection();
             _clients.TryRemove(client.ID, out _);
             _logger.Info("Client {0} disconnected", client.ID);
             UpdateConsoleTitle();
@@ -91,18 +96,18 @@ namespace LiveDashServer
             Console.Title = $"LiveDashServer - {_clients.Count} client(s), forwarder {(_forwarderConnection.IsConnected ? "" : "NOT")} connected";
         }
 
-        public void WriteToAllClients(string message)
+        public async Task WriteToAllClients(string message)
         {
             foreach (var client in _clients.Values)
             {
-                _ = client.SendMessage(message);
+                await client.SendMessage(message);
             }
         }
-        public void WriteToAllClients(byte[] message)
+        public async Task WriteToAllClients(byte[] message)
         {
             foreach (var client in _clients.Values)
             {
-                _ = client.SendMessage(message);
+                await client.SendMessage(message);
             }
         }
     }

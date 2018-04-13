@@ -42,14 +42,14 @@ namespace LiveDashServer
                     {
                         while (client.Connected)
                         {
-                            ForwarderMessage message = await ReadMessageAsync(stream).ConfigureAwait(false);
+                            ForwarderMessage message = await ReadMessageAsync(stream);
                             if (message == null)
                             {
                                 client.Close();
                                 break;
                             }
 
-                            HandleMessage(message);
+                            await HandleMessage(message);
                         }
                     }
                     _logger.Info("Lost connection from pit");
@@ -61,7 +61,7 @@ namespace LiveDashServer
             }
         }
 
-        private void HandleMessage(ForwarderMessage message)
+        private async Task HandleMessage(ForwarderMessage message)
         {
             foreach (var dataPair in message.DataValues)
             {
@@ -88,6 +88,7 @@ namespace LiveDashServer
                 {
                     _dataTimes[dataPair.Key] = lastMessageStopwatch;
                     lastMessageStopwatch.Restart();
+                    await Program.Server.WriteToAllClients(
                         $"{{ \"channel\": \"{dataPair.Key}\", \"data\": {dataPair.Value.ToString().Replace(',', '.')} }}");
                 }
             }
