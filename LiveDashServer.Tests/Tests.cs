@@ -24,7 +24,7 @@ namespace LiveDashServer.Tests
             A.CallTo(() => socket.IsConnected).Returns(true);
             Assert.IsTrue(socket.IsConnected);
             Client client = new Client(1, socket);
-            _ = client.ProcessConnection();
+            client.ProcessConnection().Forget();
 
             await client.Close();
             // Try to close after it has been closed
@@ -39,7 +39,7 @@ namespace LiveDashServer.Tests
             WebSocket socket = A.Fake<WebSocket>();
             var readStream = new WebSocketMessageReadStreamStub(new MemoryStream(Encoding.UTF8.GetBytes(testData)), WebSocketMessageType.Text, WebSocketExtensionFlags.None);
             A.CallTo(() => socket.IsConnected).Returns(true);
-            //A.CallTo(socket).WithReturnType<Task<WebSocketMessageReadStream>>().Returns(SimulateRead(readStream));
+            A.CallTo(socket).WithReturnType<Task<WebSocketMessageReadStream>>().Returns(SimulateRead(readStream));
             Client client = new Client(1, socket);
             client.ProcessConnection().Forget();
 
@@ -50,7 +50,7 @@ namespace LiveDashServer.Tests
                 delegateSender = sender;
                 delegateData = data;
             };
-            //await client.Close();
+            await client.Close();
             Assert.AreSame(client, delegateSender);
             Assert.AreEqual(testData, delegateData);
         }
