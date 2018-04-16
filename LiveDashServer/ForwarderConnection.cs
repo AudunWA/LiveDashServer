@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Globalization;
 using System.IO;
 using System.Net;
@@ -16,7 +17,7 @@ namespace LiveDashServer
     {
         private static readonly Logger _logger = LogManager.GetCurrentClassLogger();
         // private ConcurrentDictionary<string, int> _dataCount = new ConcurrentDictionary<string, int>();
-        private readonly Dictionary<string, DateTime> _dataTimes = new Dictionary<string, DateTime>();
+        private readonly Dictionary<string, Stopwatch> _dataTimes = new Dictionary<string, Stopwatch>();
 
         public bool IsConnected { get; private set; }
 
@@ -41,14 +42,14 @@ namespace LiveDashServer
                     {
                         while (client.Connected)
                         {
-                            ForwarderMessage message = await ReadMessageAsync(stream).ConfigureAwait(false);
+                            ForwarderMessage message = await ReadMessageAsync(stream);
                             if (message == null)
                             {
                                 client.Close();
                                 break;
                             }
 
-                            HandleMessage(message);
+                            await HandleMessage(message);
                         }
                     }
                     _logger.Info("Lost connection from pit");
@@ -60,27 +61,35 @@ namespace LiveDashServer
             }
         }
 
-        private void HandleMessage(ForwarderMessage message)
+        private async Task HandleMessage(ForwarderMessage message)
         {
             foreach (var dataPair in message.DataValues)
             {
-                if (!_dataTimes.TryGetValue(dataPair.Key, out DateTime lastMessageTime))
-                    lastMessageTime = DateTime.MinValue;
+                long period;
+                if (!_dataTimes.TryGetValue(dataPair.Key, out Stopwatch lastMessageStopwatch))
+                {
+                    lastMessageStopwatch = new Stopwatch();
+                    period = int.MaxValue;
+                }
+                else
+                {
+                    period = Math.Max(1, lastMessageStopwatch.ElapsedMilliseconds);
+                }
 
-                double period = (DateTime.Now - lastMessageTime).TotalSeconds;
-                double frequency = 1 / period;
+                double frequency = 1000d / period;
                 //if (!_dataCount.TryAdd(channelName, 0))
                 //    _dataCount[channelName]++;
 
                 if (frequency > 500)
                 {
-                    _logger.Trace("{0}: {1} - {2} Hz", dataPair.Key, dataPair.Value, frequency);
+                    //_logger.Trace("{0}: {1} - {2} Hz", dataPair.Key, dataPair.Value, frequency);
                 }
-                else
+                else if(frequency <= 10)
                 {
-                    _dataTimes[dataPair.Key] = DateTime.Now;
-                    Program.Server.WriteToAllClients(
-                        $"{{ \"channel\": \"{dataPair.Key}\", \"data\": {dataPair.Value.ToString().Replace(',', '.')} }}");
+                    _dataTimes[dataPair.Key] = lastMessageStopwatch;
+                    lastMessageStopwatch.Restart();
+                    await Program.Server.WriteToAllClients(
+                        $"{{ \"channel\": \"{dataPair.Key}\", \"data\": {dataPair.Value.ToString().Replace(',', '.')} }}", dataPair.Key);
                 }
             }
         }

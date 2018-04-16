@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Text;
 using System.Threading;
@@ -22,11 +23,21 @@ namespace LiveDashServer
 
         public EventHandler<string> MessageReceived { get; set; }
 
+        private readonly HashSet<string> subscribedChannels = new HashSet<string>();
+
 
         public Client(int id, WebSocket socket)
         {
             ID = id;
             Socket = socket;
+
+            MessageReceived += ProcessMessage;
+        }
+
+        private void ProcessMessage(object sender, string dataChannel)
+        {
+            if (subscribedChannels.Add(dataChannel))
+                _logger.Trace($"Client {this.ID} subscribed to channel \"{dataChannel}\"");
         }
 
         public async Task ProcessConnection()
@@ -55,7 +66,7 @@ namespace LiveDashServer
                         string msgContent;
                         using (StreamReader sr = new StreamReader(messageReadStream, Encoding.UTF8))
                             msgContent = await sr.ReadToEndAsync();
-
+                    
                         MessageReceived?.Invoke(this, msgContent);
                     }
                 } while (Socket.IsConnected && !token.IsCancellationRequested);
@@ -77,9 +88,12 @@ namespace LiveDashServer
             await _isClosed.Task;
         }
 
-        public async Task SendMessage(string message)
+        public async Task SendMessage(string message, string dataChannel)
         {
             if (!Socket.IsConnected)
+                return;
+
+            if (!subscribedChannels.Contains(dataChannel))
                 return;
 
             using (WebSocketMessageWriteStream writer = Socket.CreateMessageWriter(WebSocketMessageType.Text))
