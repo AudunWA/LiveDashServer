@@ -19,7 +19,7 @@ namespace LiveDashServer
         private volatile int _nextClientID = 1;
 
         public bool IsRunning { get; private set; } = true;
-        private readonly ConcurrentDictionary<int, Client> _clients = new ConcurrentDictionary<int, Client>();
+        public ConcurrentDictionary<int, Client> Clients { get; } = new ConcurrentDictionary<int, Client>();
 
         private readonly ForwarderConnection _forwarderConnection = new ForwarderConnection();
         private readonly DataSimulator _simulator = new DataSimulator();
@@ -82,30 +82,30 @@ namespace LiveDashServer
         private async Task HandleClient(Client client)
         {
             _logger.Info("Accepted a new client with ID {0}!", client.ID);
-            _clients.TryAdd(client.ID, client);
+            Clients.TryAdd(client.ID, client);
             UpdateConsoleTitle();
 
             await client.ProcessConnection();
-            _clients.TryRemove(client.ID, out _);
+            Clients.TryRemove(client.ID, out _);
             _logger.Info("Client {0} disconnected", client.ID);
             UpdateConsoleTitle();
         }
 
         internal void UpdateConsoleTitle()
         {
-            Console.Title = $"LiveDashServer - {_clients.Count} client(s), forwarder {(_forwarderConnection.IsConnected ? "" : "NOT")} connected";
+            Console.Title = $"LiveDashServer - {Clients.Count} client(s), forwarder {(_forwarderConnection.IsConnected ? "" : "NOT")} connected";
         }
 
         public async Task WriteToAllClients(string message, string dataChannel)
         {
-            foreach (var client in _clients.Values)
+            foreach (var client in Clients.Values)
             {
                 await client.SendMessage(message, dataChannel);
             }
         }
         public async Task WriteToAllClients(byte[] message)
         {
-            foreach (var client in _clients.Values)
+            foreach (var client in Clients.Values)
             {
                 await client.SendMessage(message);
             }

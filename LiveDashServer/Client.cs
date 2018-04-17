@@ -23,7 +23,7 @@ namespace LiveDashServer
 
         public EventHandler<string> MessageReceived { get; set; }
 
-        private readonly HashSet<string> subscribedChannels = new HashSet<string>();
+        public HashSet<string> SubscribedChannels { get; } = new HashSet<string>();
 
 
         public Client(int id, WebSocket socket)
@@ -36,7 +36,7 @@ namespace LiveDashServer
 
         private void ProcessMessage(object sender, string dataChannel)
         {
-            if (subscribedChannels.Add(dataChannel))
+            if (SubscribedChannels.Add(dataChannel))
                 _logger.Trace($"Client {this.ID} subscribed to channel \"{dataChannel}\"");
         }
 
@@ -93,7 +93,7 @@ namespace LiveDashServer
             if (!Socket.IsConnected)
                 return;
 
-            if (!subscribedChannels.Contains(dataChannel))
+            if (!SubscribedChannels.Contains(dataChannel))
                 return;
 
             using (WebSocketMessageWriteStream writer = Socket.CreateMessageWriter(WebSocketMessageType.Text))
