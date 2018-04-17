@@ -17,11 +17,21 @@ namespace LiveDashServer
         {
             //DelayTest().Forget();
             _logger.Info("Starting LiveDashServer {0}", Assembly.GetExecutingAssembly().GetName().Version);
-            Server = new Server();
-            await Server.Run();
-
-            // Ensure to flush and stop internal timers/threads before application-exit (Avoid segmentation fault on Linux)
-            LogManager.Shutdown();
+            try
+            {
+                Server = new Server();
+                await Server.Run();
+            }
+            catch (Exception e)
+            {
+                _logger.Error(e, "Main task error");
+            }
+            finally
+            {
+                _logger.Info("Server task awaited, shutting down LiveDashServer");
+                // Ensure to flush and stop internal timers/threads before application-exit (Avoid segmentation fault on Linux)
+                LogManager.Shutdown();
+            }
         }
 
         //static async Task DelayTest()
