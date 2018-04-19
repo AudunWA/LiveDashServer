@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
@@ -18,36 +19,47 @@ namespace LiveDashServer
             Random random = new Random();
             int counter = 60;
             int counter2 = 60;
-            string messageFormat = "{{ \"canId\": {0}, \"data\": {1} }}";
+            string messageFormat = "{{ \"canId\": \"{0}\", \"data\": {1} }}";
             byte[] messageBytes = new byte[4];
             try
             {
-                while (!token.IsCancellationRequested)
+                while (true)
                 {
+                    token.ThrowIfCancellationRequested();
+
                     counter = GenerateNewNumber(counter, random);
                     counter2 = GenerateNewNumber(counter2, random);
+
+                    foreach (Client client in Program.Server.Clients.Values)
+                    {
+                        foreach (string channel in client.SubscribedChannels.ToList())
+                        {
+                            client.SendMessage(string.Format(messageFormat, channel, counter), channel).Forget();
+                        }
+                    }
+
                     //BitConverter.GetBytes((short)1).CopyTo(messageBytes, 0);
                     //BitConverter.GetBytes((short)counter).CopyTo(messageBytes, 2);
                     //await Program.Server.WriteToAllClients(messageBytes);
                     //BitConverter.GetBytes((short)50).CopyTo(messageBytes, 0);
                     //BitConverter.GetBytes((short)(120-counter)).CopyTo(messageBytes, 2);
-                    //await Program.Server.WriteToAllClients(messageBytes);
-                    string message = string.Format(messageFormat, 1, counter);
-                    string message2 = string.Format(messageFormat, 50, 120 - counter);
-                    string message3 = string.Format(messageFormat, 2, counter2);
-                    await Program.Server.WriteToAllClients(message, "1");
-                    //await Program.Server.WriteToAllClients(message2);
-                    //await Program.Server.WriteToAllClients(message3);
-                    //await Program.Server.WriteToAllClients(string.Format(messageFormat, TIMESTAMP_ID,
-                    //    DateTimeOffset.Now.ToUnixTimeSeconds()));
-                    //await Program.Server.WriteToAllClients(string.Format(messageFormat, VIDEO_DELAY_ID, 3000));
-                    //counter++;
+                    ////await Program.Server.WriteToAllClients(messageBytes);
+                    //string message = string.Format(messageFormat, 1, counter);
+                    //string message2 = string.Format(messageFormat, 50, 120 - counter);
+                    //string message3 = string.Format(messageFormat, 2, counter2);
+                    //await Program.Server.WriteToAllClients(message, "1");
+                    ////await Program.Server.WriteToAllClients(message2);
+                    ////await Program.Server.WriteToAllClients(message3);
+                    ////await Program.Server.WriteToAllClients(string.Format(messageFormat, TIMESTAMP_ID,
+                    ////    DateTimeOffset.Now.ToUnixTimeSeconds()));
+                    ////await Program.Server.WriteToAllClients(string.Format(messageFormat, VIDEO_DELAY_ID, 3000));
+                    ////counter++;
                     counter = counter % 120;
-                    counter2 = counter2 % 120;
+                    //counter2 = counter2 % 120;
                     if (counter < 0) counter = 120;
-                    if (counter2 < 0) counter2 = 120;
-                    //if (counter == 0) counter = 1;
-                    //if (counter2 == 0) counter2 = 1;
+                    //if (counter2 < 0) counter2 = 120;
+                    ////if (counter == 0) counter = 1;
+                    ////if (counter2 == 0) counter2 = 1;
                     await Task.Delay(100, token);
                 }
             }
