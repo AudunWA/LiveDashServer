@@ -19,12 +19,23 @@ namespace LiveDashServer
         // private ConcurrentDictionary<string, int> _dataCount = new ConcurrentDictionary<string, int>();
         private readonly Dictionary<string, Stopwatch> _dataTimes = new Dictionary<string, Stopwatch>();
 
+        private readonly Dictionary<string, List<ICalculatedChannel>> _calculatedChannels = new Dictionary<string, List<ICalculatedChannel>>();
+
         public bool IsConnected { get; private set; }
+
+        private void InitCalculatedChannels()
+        {
+            // TODO: Load from some config file
+            CalculatedChannelEuclidian channel = new CalculatedChannelEuclidian("LiveDash_velocity", "ADC_FL_GearTempFL", "ADC_FR_GearTempFR", 3.6);
+            _calculatedChannels.Add(channel.ChannelName1, new List<ICalculatedChannel>{channel});
+            _calculatedChannels.Add(channel.ChannelName2, new List<ICalculatedChannel>{channel});
+        }
 
         public async Task ListenAsync()
         {
             try
             {
+                InitCalculatedChannels();
                 TcpListener listener = new TcpListener(IPAddress.Any, 1221);
                 listener.Start();
 
@@ -63,6 +74,7 @@ namespace LiveDashServer
 
         private async Task HandleMessage(ForwarderMessage message)
         {
+            HashSet<ICalculatedChannel> calculatedChannelsToUpdate = new HashSet<ICalculatedChannel>();
             foreach (var dataPair in message.DataValues)
             {
                 long period;
@@ -86,11 +98,26 @@ namespace LiveDashServer
                 }
                 else if(frequency <= 10)
                 {
+                    if (_calculatedChannels.TryGetValue(dataPair.Key, out var calculatedChannels))
+                    {
+                        foreach (ICalculatedChannel calculatedChannel in calculatedChannels)
+                        {
+                            calculatedChannel.UpdateValue(dataPair.Key, dataPair.Value);
+                            calculatedChannelsToUpdate.Add(calculatedChannel);
+                        }
+                    }
+
                     _dataTimes[dataPair.Key] = lastMessageStopwatch;
                     lastMessageStopwatch.Restart();
                     await Program.Server.WriteToAllClients(
                         $"{{ \"channel\": \"{dataPair.Key}\", \"data\": {dataPair.Value.ToString().Replace(',', '.')} }}", dataPair.Key);
                 }
+            }
+
+            foreach (ICalculatedChannel calculatedChannel in calculatedChannelsToUpdate)
+            {
+                await Program.Server.WriteToAllClients(
+                    $"{{ \"channel\": \"{calculatedChannel.Name}\", \"data\": {calculatedChannel.CalculatedValue.ToString().Replace(',', '.')} }}", calculatedChannel.Name);
             }
         }
 
