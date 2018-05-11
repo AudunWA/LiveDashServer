@@ -8,12 +8,18 @@ using NLog;
 
 namespace LiveDashServer
 {
+    /// <summary>
+    /// Generates fake data for sending to client when there is no Analyze instance connected
+    /// </summary>
     public class DataSimulator
     {
         private static readonly Logger _logger = LogManager.GetCurrentClassLogger();
 
-        private const int TIMESTAMP_ID = 32;
-        private const int VIDEO_DELAY_ID = 31;
+        /// <summary>
+        /// The main loop of the data simulator. Both generates and sends the generated data to all clients
+        /// </summary>
+        /// <param name="token"></param>
+        /// <returns></returns>
         public async Task GenerateAndSendData(CancellationToken token = default)
         {
             Random random = new Random();
@@ -37,29 +43,9 @@ namespace LiveDashServer
                             client.SendMessage(string.Format(messageFormat, channel, counter), channel).Forget();
                         }
                     }
-
-                    //BitConverter.GetBytes((short)1).CopyTo(messageBytes, 0);
-                    //BitConverter.GetBytes((short)counter).CopyTo(messageBytes, 2);
-                    //await Program.Server.WriteToAllClients(messageBytes);
-                    //BitConverter.GetBytes((short)50).CopyTo(messageBytes, 0);
-                    //BitConverter.GetBytes((short)(120-counter)).CopyTo(messageBytes, 2);
-                    ////await Program.Server.WriteToAllClients(messageBytes);
-                    //string message = string.Format(messageFormat, 1, counter);
-                    //string message2 = string.Format(messageFormat, 50, 120 - counter);
-                    //string message3 = string.Format(messageFormat, 2, counter2);
-                    //await Program.Server.WriteToAllClients(message, "1");
-                    ////await Program.Server.WriteToAllClients(message2);
-                    ////await Program.Server.WriteToAllClients(message3);
-                    ////await Program.Server.WriteToAllClients(string.Format(messageFormat, TIMESTAMP_ID,
-                    ////    DateTimeOffset.Now.ToUnixTimeSeconds()));
-                    ////await Program.Server.WriteToAllClients(string.Format(messageFormat, VIDEO_DELAY_ID, 3000));
-                    ////counter++;
                     counter = counter % 120;
-                    //counter2 = counter2 % 120;
                     if (counter < 0) counter = 120;
-                    //if (counter2 < 0) counter2 = 120;
-                    ////if (counter == 0) counter = 1;
-                    ////if (counter2 == 0) counter2 = 1;
+
                     await Task.Delay(100, token);
                 }
             }
@@ -73,6 +59,12 @@ namespace LiveDashServer
             }
         }
 
+        /// <summary>
+        /// Generates a random number which gets added to the input counter
+        /// </summary>
+        /// <param name="counter">The input counter</param>
+        /// <param name="random">The Random instance that provides random numbers </param>
+        /// <returns></returns>
         private static int GenerateNewNumber(int counter, Random random)
         {
             const double delta = 120 * 0.1;
