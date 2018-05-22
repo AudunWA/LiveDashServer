@@ -26,9 +26,9 @@ namespace LiveDashServer.Tests
             Client client = new Client(1, socket);
             client.ProcessConnection().Forget();
 
-            await client.Close();
+            await client.CloseAsync();
             // Try to close after it has been closed
-            await client.Close();
+            await client.CloseAsync();
             A.CallTo(() => socket.Dispose()).MustHaveHappenedOnceExactly();
         }
 
@@ -50,7 +50,7 @@ namespace LiveDashServer.Tests
                 delegateSender = sender;
                 delegateData = data;
             };
-            await client.Close();
+            await client.CloseAsync();
             Assert.AreSame(client, delegateSender);
             Assert.AreEqual(testData, delegateData);
         }

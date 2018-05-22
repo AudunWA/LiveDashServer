@@ -13,19 +13,49 @@ using NLog;
 
 namespace LiveDashServer
 {
+    /// <summary>
+    /// Used to receive data from Analyze, which forwards data directly from the car
+    /// </summary>
     public class ForwarderConnection
     {
         private static readonly Logger _logger = LogManager.GetCurrentClassLogger();
-        // private ConcurrentDictionary<string, int> _dataCount = new ConcurrentDictionary<string, int>();
+        /// <summary>
+        /// A dictionary containing which is used to measure the time elapsed since we last got a message in a given data channel
+        /// </summary>
         private readonly Dictionary<string, Stopwatch> _dataTimes = new Dictionary<string, Stopwatch>();
 
+        /// <summary>
+        /// A dictionary which maps real channels to a respective calculated channel
+        /// </summary>
+        private readonly Dictionary<string, List<ICalculatedChannel>> _calculatedChannels = new Dictionary<string, List<ICalculatedChannel>>();
+
+        /// <summary>
+        /// Indicates if there is an instance of Analyze connected to this forwarder
+        /// </summary>
         public bool IsConnected { get; private set; }
 
+        /// <summary>
+        /// Populates the calculated channel-dictioanry
+        /// </summary>
+        private void InitCalculatedChannels()
+        {
+            // TODO: Load from some config file
+            CalculatedChannelEuclidian channel = new CalculatedChannelEuclidian("LiveDash_velocity", "ADC_FL_GearTempFL", "ADC_FR_GearTempFR", 3.6);
+            _calculatedChannels.Add(channel.ChannelName1, new List<ICalculatedChannel>{channel});
+            _calculatedChannels.Add(channel.ChannelName2, new List<ICalculatedChannel>{channel});
+        }
+
+
+        /// <summary>
+        /// The main loop of the forwarder connection. Listens and processes connections, and runs forever
+        /// </summary>
+        /// <returns></returns>
         public async Task ListenAsync()
         {
             try
             {
-                TcpListener listener = new TcpListener(IPAddress.Any, 1221);
+                InitCalculatedChannels();
+                TcpListener listener = new TcpListener(IPAddress.Any, 1221); // TODO: Make configurable
                 listener.Start();
 
                 while (true)
@@ -49,7 +79,7 @@ namespace LiveDashServer
                                 break;
                             }
 
-                            await HandleMessage(message);
+                            await HandleMessageAsync(message);
                         }
                     }
                     _logger.Info("Lost connection from pit");
@@ -61,8 +91,13 @@ namespace LiveDashServer
             }
         }
 
-        private async Task HandleMessage(ForwarderMessage message)
+        /// <summary>
+        /// Processes a forwarder message after it has been parsed
+        /// </summary>
+        /// <param name="message">The forwarder message</param>
+        private async Task HandleMessageAsync(ForwarderMessage message)
         {
+            HashSet<ICalculatedChannel> calculatedChannelsToUpdate = new HashSet<ICalculatedChannel>();
             foreach (var dataPair in message.DataValues)
             {
                 long period;
@@ -86,16 +121,37 @@ namespace LiveDashServer
                 }
                 else if(frequency <= 10)
                 {
+                    if (_calculatedChannels.TryGetValue(dataPair.Key, out var calculatedChannels))
+                    {
+                        foreach (ICalculatedChannel calculatedChannel in calculatedChannels)
+                        {
+                            calculatedChannel.UpdateValue(dataPair.Key, dataPair.Value);
+                            calculatedChannelsToUpdate.Add(calculatedChannel);
+                        }
+                    }
+
                     _dataTimes[dataPair.Key] = lastMessageStopwatch;
                     lastMessageStopwatch.Restart();
                     await Program.Server.WriteToAllClients(
                         $"{{ \"channel\": \"{dataPair.Key}\", \"data\": {dataPair.Value.ToString().Replace(',', '.')} }}", dataPair.Key);
                 }
             }
+
+            foreach (ICalculatedChannel calculatedChannel in calculatedChannelsToUpdate)
+            {
+                await Program.Server.WriteToAllClients(
+                    $"{{ \"channel\": \"{calculatedChannel.Name}\", \"data\": {calculatedChannel.CalculatedValue.ToString().Replace(',', '.')} }}", calculatedChannel.Name);
+            }
         }
 
+        /// <summary>
+        /// Reads and parses a forwarder message from a network stream
+        /// </summary>
+        /// <param name="stream">The stream to read from</param>
+        /// <returns>A new ForwarderMessage containing the read data, or null if an error occurred</returns>
         private async Task<ForwarderMessage> ReadMessageAsync(NetworkStream stream)
         {
+            // TODO: Could possibly be moved to StreamExtensions, but it's only used in this class
             ForwarderMessage message;
             try
             {
@@ -157,17 +213,6 @@ namespace LiveDashServer
             }
 
             return message;
-        }
-
-        class ForwarderMessage
-        {
-            public long Timestamp { get; }
-            public Dictionary<string, double> DataValues { get; } = new Dictionary<string, double>();
-
-            public ForwarderMessage(long timestamp)
-            {
-                this.Timestamp = timestamp;
-            }
         }
     }
 }
