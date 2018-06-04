@@ -14,6 +14,7 @@ namespace LiveDashServer
     public class DataSimulator
     {
         private static readonly Logger _logger = LogManager.GetCurrentClassLogger();
+        public bool IsRunning { get; private set; }
 
         /// <summary>
         /// The main loop of the data simulator. Both generates and sends the generated data to all clients
@@ -22,6 +23,7 @@ namespace LiveDashServer
         /// <returns></returns>
         public async Task GenerateAndSendData(CancellationToken token = default)
         {
+            IsRunning = true;
             Random random = new Random();
             int counter = 60;
             int counter2 = 60;
@@ -43,6 +45,7 @@ namespace LiveDashServer
                             client.SendMessage(string.Format(messageFormat, channel, counter), channel).Forget();
                         }
                     }
+
                     counter = counter % 120;
                     if (counter < 0) counter = 120;
 
@@ -56,6 +59,10 @@ namespace LiveDashServer
             catch (Exception e)
             {
                 _logger.Error(e);
+            }
+            finally
+            {
+                IsRunning = false;
             }
         }
 

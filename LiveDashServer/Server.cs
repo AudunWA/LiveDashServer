@@ -58,7 +58,7 @@ namespace LiveDashServer
         /// </summary>
         public void StartSimulator()
         {
-            if (_simulatorTokenSource != null && !_simulatorTokenSource.IsCancellationRequested)
+            if (_simulator.IsRunning && _simulatorTokenSource != null && !_simulatorTokenSource.IsCancellationRequested)
                 return;
 
             _simulatorTokenSource = new CancellationTokenSource();
@@ -148,7 +148,15 @@ namespace LiveDashServer
         /// </summary>
         internal void UpdateConsoleTitle()
         {
-            Console.Title = $"LiveDashServer - {Clients.Count} client(s), forwarder {(_forwarderConnection.IsConnected ? "" : "NOT")} connected";
+            try
+            {
+                Console.Title =
+                    $"LiveDashServer - {Clients.Count} client(s), forwarder {(_forwarderConnection.IsConnected ? "" : "NOT")} connected";
+            }
+            catch (IOException)
+            {
+                _logger.Trace("Could not update console title");
+            }
         }
 
         /// <summary>
