@@ -2,4 +2,4 @@
 The backend code for the new LiveDash
 
 ## Documentation
-[The wiki](https://github.com/RevolveNTNU/R18_LiveDashServer/wiki) contains install instructions and documentation for this system.
+[The wiki](https://github.com/AudunWA/LiveDashServer/wiki) contains install instructions and documentation for this system.
